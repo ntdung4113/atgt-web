@@ -1,0 +1,28 @@
+{
+  "short_name": "ATGT",
+  "name": "An toàn giao thông",
+  "icons": [
+    {
+      "src": "atgt.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "atgt.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "scope": "/",
+  "description": "Website phổ biến luật ATGT và luyện thi lý thuyết",
+  "lang": "vi-VN",
+  "dir": "ltr",
+  "prefer_related_applications": false
+}
