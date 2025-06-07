@@ -6,74 +6,92 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS configuration - Updated to avoid path-to-regexp issues
+// CORS configuration based on environment
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_URL
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Thêm 'PATCH' vào methods
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
-
-// Make sure all routes use the same CORS configuration
 app.options('*', cors(corsOptions));
 
-// Thêm headers để hỗ trợ Cross-Origin-Isolation và cho phép window.postMessage hoạt động
+// Security headers
 app.use((req, res, next) => {
-    // Thiết lập Cross-Origin-Opener-Policy là "same-origin-allow-popups" thay vì "same-origin"
-    // res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-    // res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
 });
 
+// Body parser middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Middleware to log requests
+// Request logging middleware
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
+    if (process.env.NODE_ENV === 'production') {
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    }
     next();
 });
 
 // Add middleware to catch path-to-regexp errors
 app.use(pathErrorHandler);
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
+// MongoDB connection with improved options
+mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10,
+    minPoolSize: 5,
+    retryWrites: true,
+    retryReads: true
+})
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1); // Exit if cannot connect to database
+    });
 
 // Routes
 app.use('/api/questions', require('./routes/questionRoutes'));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/laws', require('./routes/law'));
+app.use('/api/posts', require('./routes/postRoutes'));
+app.use('/api/signs', require('./routes/signRoute'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/traffic-violations', require('./routes/trafficViolation'));
 
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
-
-const lawRoutes = require('./routes/law');
-app.use('/api/laws', lawRoutes);
-
-const postRoutes = require('./routes/postRoutes');
-app.use('/api/posts', postRoutes);
-
-const signRoutes = require('./routes/signRoute');
-app.use('/api/signs', signRoutes);
-
-const adminRoutes = require('./routes/admin');
-app.use('/api/admin', adminRoutes);
-
-const trafficViolationRoutes = require('./routes/trafficViolation');
-app.use('/api/traffic-violations', trafficViolationRoutes);
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err.stack);
-    res.status(500).json({
-        message: 'Something went wrong!',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    res.status(err.status || 500).json({
+        message: err.message || 'Something went wrong!',
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Promise Rejection:', err);
+    // Don't crash the server, but log the error
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+});
