@@ -1,4 +1,6 @@
-export default function ResultModal({ open, result, onRetry, onReview }) {
+import React, { memo } from 'react';
+
+const ResultModal = memo(({ open, result, onRetry, onReview }) => {
     if (!open) return null;
     return (
         <div style={{
@@ -95,4 +97,6 @@ export default function ResultModal({ open, result, onRetry, onReview }) {
             </div>
         </div>
     );
-}
+});
+
+export default ResultModal;

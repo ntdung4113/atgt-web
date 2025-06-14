@@ -1,29 +1,65 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useReducer, useCallback } from 'react';
 import { getPracticeQuestions, checkPracticeAnswers } from '../../services/questionService';
 import useAuth from './useAuth';
 import { getCurrentUser, updateUserLicense } from '../../services/userService';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const usePractice = () => {
-    const { token } = useAuth();
-    const [license, setLicense] = useState('A1');
-    const [questions, setQuestions] = useState([]);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [answers, setAnswers] = useState({});
-    const [checkResult, setCheckResult] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [showSidebar, setShowSidebar] = useState(true);
-    const [topic, setTopic] = useState(null);
-    const [progress, setProgress] = useState({});
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showImageModal, setShowImageModal] = useState(false);
-    const [zoomImageSrc, setZoomImageSrc] = useState(null);
+const initialState = {
+    license: 'A1',
+    questions: [],
+    currentQuestionIndex: 0,
+    answers: new Map(),
+    checkResult: null,
+    loading: false,
+    showSidebar: true,
+    topic: null,
+    progress: new Map(),
+    showDeleteModal: false,
+    showImageModal: false,
+    zoomImageSrc: null
+};
 
-    // Responsive: ẩn sidebar khi nhỏ hơn 700px
+const reducer = (state, action) => {
+    switch (action.type) {
+        case 'SET_LICENSE':
+            return { ...state, license: action.payload };
+        case 'SET_QUESTIONS':
+            return { ...state, questions: action.payload, currentQuestionIndex: 0 };
+        case 'SET_CURRENT_QUESTION_INDEX':
+            return { ...state, currentQuestionIndex: action.payload };
+        case 'SET_ANSWERS':
+            return { ...state, answers: action.payload };
+        case 'SET_CHECK_RESULT':
+            return { ...state, checkResult: action.payload };
+        case 'SET_LOADING':
+            return { ...state, loading: action.payload };
+        case 'SET_SHOW_SIDEBAR':
+            return { ...state, showSidebar: action.payload };
+        case 'SET_TOPIC':
+            return { ...state, topic: action.payload };
+        case 'SET_PROGRESS':
+            return { ...state, progress: action.payload };
+        case 'SET_SHOW_DELETE_MODAL':
+            return { ...state, showDeleteModal: action.payload };
+        case 'SET_SHOW_IMAGE_MODAL':
+            return { ...state, showImageModal: action.payload };
+        case 'SET_ZOOM_IMAGE_SRC':
+            return { ...state, zoomImageSrc: action.payload };
+        case 'CLEAR_PROGRESS':
+            return { ...state, progress: new Map(), answers: new Map(), checkResult: null };
+        default:
+            return state;
+    }
+};
+
+const usePractice = () => {
+    const [state, dispatch] = useReducer(reducer, initialState);
+    const { token } = useAuth();
+
     useEffect(() => {
         const handleResize = () => {
-            setShowSidebar(window.innerWidth > 700);
+            dispatch({ type: 'SET_SHOW_SIDEBAR', payload: window.innerWidth > 700 });
         };
         handleResize();
         window.addEventListener('resize', handleResize);
@@ -32,101 +68,120 @@ const usePractice = () => {
 
     useEffect(() => {
         if (token) {
-            getCurrentUser(token)
-                .then(userData => {
-                    if (userData?.license) setLicense(userData.license);
-                })
-                .catch(console.error);
-            // Lấy tiến trình làm bài
-            axios.get('/api/questions/progress', {
-                headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.data && Array.isArray(res.data.data)) {
-                    const prog = {};
-                    res.data.data.forEach(entry => {
-                        prog[entry.questionNumber] = {
-                            user_answer: entry.user_answer,
-                            is_correct: entry.is_correct
-                        };
-                    });
-                    setProgress(prog);
+            const fetchUserDataAndProgress = async () => {
+                try {
+                    const [userResponse, progressResponse] = await Promise.all([
+                        getCurrentUser(token),
+                        axios.get('/api/questions/progress', { headers: { Authorization: `Bearer ${token}` } })
+                    ]);
+                    if (userResponse?.license) {
+                        dispatch({ type: 'SET_LICENSE', payload: userResponse.license });
+                    }
+                    if (progressResponse.data && Array.isArray(progressResponse.data.data)) {
+                        const newProgress = new Map();
+                        progressResponse.data.data.forEach(entry => {
+                            newProgress.set(entry.questionNumber, {
+                                user_answer: entry.user_answer,
+                                is_correct: entry.is_correct
+                            });
+                        });
+                        dispatch({ type: 'SET_PROGRESS', payload: newProgress });
+                    }
+                } catch (error) {
+                    console.error('Error fetching user data or progress:', error);
                 }
-            }).catch(() => { });
+            };
+            fetchUserDataAndProgress();
         }
     }, [token]);
 
-    const handleLicenseChange = async (e) => {
+    const handleLicenseChange = useCallback(async (e) => {
         const newLicense = e.target.value;
-        setLicense(newLicense);
+        dispatch({ type: 'SET_LICENSE', payload: newLicense });
         try {
             await updateUserLicense(newLicense, token);
         } catch (error) {
             toast.error('Cập nhật hạng bằng thất bại!');
         }
-    };
+    }, [token]);
 
-    const handleGetQuestions = async () => {
-        setLoading(true);
-        setCheckResult(null);
-        setAnswers({});
-        try {
-            const params = topic !== null ? { license, topic } : { license };
-            const res = await getPracticeQuestions(token, params);
-            setQuestions(res.data);
-            setCurrentQuestionIndex(0);
-        } catch (error) {
-            toast.error('Lỗi lấy câu hỏi');
-        } finally {
-            setLoading(false);
+    const handleGetQuestions = useCallback(async () => {
+        if (!token) {
+            toast.error('Vui lòng đăng nhập để tiếp tục.');
+            return;
         }
-    };
+        dispatch({ type: 'SET_LOADING', payload: true });
+        dispatch({ type: 'SET_CHECK_RESULT', payload: null });
+        dispatch({ type: 'SET_ANSWERS', payload: new Map() });
+        try {
+            const params = state.topic !== null ? { license: state.license, topic: state.topic } : { license: state.license };
+            const res = await getPracticeQuestions(token, params);
+            dispatch({ type: 'SET_QUESTIONS', payload: res.data });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Không thể tải câu hỏi. Vui lòng kiểm tra kết nối mạng.');
+        } finally {
+            dispatch({ type: 'SET_LOADING', payload: false });
+        }
+    }, [token, state.license, state.topic]);
 
-    const handleAnswer = async (questionNumber, answer) => {
-        setAnswers(prev => ({ ...prev, [questionNumber]: answer }));
+    const handleAnswer = useCallback(async (questionNumber, answer) => {
+        const newAnswers = new Map(state.answers);
+        newAnswers.set(questionNumber, answer);
+        dispatch({ type: 'SET_ANSWERS', payload: newAnswers });
         try {
             const body = { [questionNumber]: answer };
             const res = await checkPracticeAnswers(token, body);
             if (res && Array.isArray(res.results)) {
                 const result = res.results.find(r => r.questionNumber === questionNumber);
-                setCheckResult(result || null);
+                dispatch({ type: 'SET_CHECK_RESULT', payload: result || null });
             } else {
-                setCheckResult(null);
+                dispatch({ type: 'SET_CHECK_RESULT', payload: null });
             }
-            axios.get('/api/questions/progress', {
+            const progressRes = await axios.get('/api/questions/progress', {
                 headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.data && Array.isArray(res.data.data)) {
-                    const prog = {};
-                    res.data.data.forEach(entry => {
-                        prog[entry.questionNumber] = {
-                            user_answer: entry.user_answer,
-                            is_correct: entry.is_correct
-                        };
+            });
+            if (progressRes.data && Array.isArray(progressRes.data.data)) {
+                const newProgress = new Map();
+                progressRes.data.data.forEach(entry => {
+                    newProgress.set(entry.questionNumber, {
+                        user_answer: entry.user_answer,
+                        is_correct: entry.is_correct
                     });
-                    setProgress(prog);
-                }
-            }).catch(() => { });
+                });
+                dispatch({ type: 'SET_PROGRESS', payload: newProgress });
+            }
         } catch (error) {
-            setCheckResult(null);
+            dispatch({ type: 'SET_CHECK_RESULT', payload: null });
         }
-    };
+    }, [token, state.answers]);
 
     const handleKeyDown = useCallback((e) => {
-        if (!questions.length) return;
-        if (e.key === 'ArrowRight') {
-            setCurrentQuestionIndex(idx => Math.min(idx + 1, questions.length - 1));
-            setCheckResult(null);
-        } else if (e.key === 'ArrowLeft') {
-            setCurrentQuestionIndex(idx => Math.max(idx - 1, 0));
-            setCheckResult(null);
-        } else if (["1", "2", "3", "4"].includes(e.key)) {
-            const idx = Number(e.key) - 1;
-            const currentQuestion = questions[currentQuestionIndex];
-            if (currentQuestion && currentQuestion.options && idx < currentQuestion.options.length) {
-                handleAnswer(currentQuestion.questionNumber, idx + 1);
-            }
+        if (!state.questions.length || !state.questions[state.currentQuestionIndex]) return;
+
+        const currentQuestion = state.questions[state.currentQuestionIndex];
+
+        switch (e.key) {
+            case 'ArrowRight':
+                dispatch({ type: 'SET_CURRENT_QUESTION_INDEX', payload: Math.min(state.currentQuestionIndex + 1, state.questions.length - 1) });
+                dispatch({ type: 'SET_CHECK_RESULT', payload: null });
+                break;
+            case 'ArrowLeft':
+                dispatch({ type: 'SET_CURRENT_QUESTION_INDEX', payload: Math.max(state.currentQuestionIndex - 1, 0) });
+                dispatch({ type: 'SET_CHECK_RESULT', payload: null });
+                break;
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+                const answerIndex = Number(e.key) - 1;
+                if (answerIndex < currentQuestion.options.length) {
+                    handleAnswer(currentQuestion.questionNumber, answerIndex + 1);
+                }
+                break;
+            default:
+                break;
         }
-    }, [questions, currentQuestionIndex]);
+    }, [state.questions, state.currentQuestionIndex, handleAnswer]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -134,68 +189,70 @@ const usePractice = () => {
     }, [handleKeyDown]);
 
     const handleSelectSidebar = useCallback((idx) => {
-        setCurrentQuestionIndex(idx);
-        setCheckResult(null);
+        dispatch({ type: 'SET_CURRENT_QUESTION_INDEX', payload: idx });
+        dispatch({ type: 'SET_CHECK_RESULT', payload: null });
     }, []);
 
     useEffect(() => {
-        const q = questions[currentQuestionIndex];
-        if (q && progress[q.questionNumber]) {
-            setAnswers(prev => ({
-                ...prev,
-                [q.questionNumber]: progress[q.questionNumber].user_answer
-            }));
-            setCheckResult({
-                questionNumber: q.questionNumber,
-                isCorrect: progress[q.questionNumber].is_correct,
-                correct_answer: progress[q.questionNumber].user_answer
+        const q = state.questions[state.currentQuestionIndex];
+        if (q && state.progress.has(q.questionNumber)) {
+            const progressEntry = state.progress.get(q.questionNumber);
+            const newAnswers = new Map(state.answers);
+            newAnswers.set(q.questionNumber, progressEntry.user_answer);
+            dispatch({ type: 'SET_ANSWERS', payload: newAnswers });
+            dispatch({
+                type: 'SET_CHECK_RESULT',
+                payload: {
+                    questionNumber: q.questionNumber,
+                    isCorrect: progressEntry.is_correct,
+                    correct_answer: progressEntry.user_answer
+                }
             });
         } else {
-            setCheckResult(null);
-            setAnswers(prev => ({
-                ...prev,
-                [q?.questionNumber]: undefined
-            }));
+            dispatch({ type: 'SET_CHECK_RESULT', payload: null });
+            const newAnswers = new Map(state.answers);
+            newAnswers.delete(q?.questionNumber);
+            dispatch({ type: 'SET_ANSWERS', payload: newAnswers });
         }
-    }, [currentQuestionIndex, questions, progress]);
+    }, [state.currentQuestionIndex, state.questions, state.progress]);
 
-    const handleDeleteProgressClick = () => setShowDeleteModal(true);
+    const handleDeleteProgressClick = useCallback(() => {
+        dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: true });
+    }, []);
 
-    const handleDeleteProgress = async () => {
+    const handleDeleteProgress = useCallback(async () => {
         try {
             await axios.delete('/api/questions/progress', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setProgress({});
-            setAnswers({});
-            setCheckResult(null);
-            setShowDeleteModal(false);
+            dispatch({ type: 'CLEAR_PROGRESS' });
+            dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
             toast.success('Đã xoá tiến trình ôn tập!', { position: 'bottom-left' });
         } catch (error) {
-            setShowDeleteModal(false);
+            dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: false });
             toast.error('Xoá tiến trình thất bại!', { position: 'bottom-left' });
         }
-    };
+    }, [token]);
 
     return {
-        license,
-        setLicense,
-        questions,
-        currentQuestionIndex,
-        answers,
-        checkResult,
-        loading,
-        showSidebar,
-        setShowSidebar,
-        topic,
-        setTopic,
-        progress,
-        showDeleteModal,
-        setShowDeleteModal,
-        showImageModal,
-        setShowImageModal,
-        zoomImageSrc,
-        setZoomImageSrc,
+        license: state.license,
+        setLicense: (value) => dispatch({ type: 'SET_LICENSE', payload: value }),
+        questions: state.questions,
+        currentQuestionIndex: state.currentQuestionIndex,
+        answers: Object.fromEntries(state.answers), // Chuyển Map thành object để tương thích với component
+        checkResult: state.checkResult,
+        loading: state.loading,
+        showSidebar: state.showSidebar,
+        setShowSidebar: (value) => dispatch({ type: 'SET_SHOW_SIDEBAR', payload: value }),
+        topic: state.topic,
+        setTopic: (value) => dispatch({ type: 'SET_TOPIC', payload: value }),
+        progress: Object.fromEntries(state.progress), // Chuyển Map thành object
+        showDeleteModal: state.showDeleteModal,
+        setShowDeleteModal: (value) => dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: value }),
+        showImageModal: state.showImageModal,
+        setShowImageModal: (value) => dispatch({ type: 'SET_SHOW_IMAGE_MODAL', payload: value }),
+        zoomImageSrc: state.zoomImageSrc,
+        setZoomImageSrc: (value) => dispatch({ type: 'SET_ZOOM_IMAGE_SRC', payload: value }),
         handleLicenseChange,
         handleGetQuestions,
         handleAnswer,

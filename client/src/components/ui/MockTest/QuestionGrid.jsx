@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-const QuestionGrid = ({
+const QuestionGrid = memo(({
     questions,
     currentIdx,
     onQuestionClick,
@@ -142,6 +142,6 @@ const QuestionGrid = ({
     }
 
     return null;
-};
+});
 
 export default QuestionGrid;

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-const PracticeQuestionGrid = ({ questions, currentQuestionIndex, progress, onSelect }) => {
+const PracticeQuestionGrid = memo(({ questions, currentQuestionIndex, progress, onSelect }) => {
     return (
         <div
             style={{
@@ -65,6 +65,6 @@ const PracticeQuestionGrid = ({ questions, currentQuestionIndex, progress, onSel
             </div>
         </div>
     );
-};
+});
 
 export default PracticeQuestionGrid;

@@ -1,4 +1,6 @@
-export default function ImageModal({ open, imageUrl, onClose }) {
+import React, { memo } from 'react';
+
+const ImageModal = memo(({ open, imageUrl, onClose }) => {
     if (!open) return null;
     return (
         <div
@@ -45,4 +47,6 @@ export default function ImageModal({ open, imageUrl, onClose }) {
             </div>
         </div>
     );
-}
+});
+
+export default ImageModal;
