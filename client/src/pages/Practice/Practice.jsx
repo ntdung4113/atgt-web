@@ -73,6 +73,18 @@ const PracticePage = () => {
         setShowImageModal(true);
     }, []);
 
+    const handlePreviousQuestion = useCallback(() => {
+        if (currentQuestionIndex > 0) {
+            handleSelectSidebar(currentQuestionIndex - 1);
+        }
+    }, [currentQuestionIndex, handleSelectSidebar]);
+
+    const handleNextQuestion = useCallback(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+            handleSelectSidebar(currentQuestionIndex + 1);
+        }
+    }, [currentQuestionIndex, questions.length, handleSelectSidebar]);
+
     return (
         <div className={styles.container}>
             <h2 className={styles.title}>
@@ -138,14 +150,32 @@ const PracticePage = () => {
                                 />
                             </div>
                         ) : (
-                            <PracticeQuestion
-                                question={currentQuestion}
-                                questionIndex={currentQuestionIndex}
-                                answers={answers}
-                                checkResult={checkResult}
-                                onAnswer={wrappedHandleAnswer}
-                                onZoomImage={onZoomImage}
-                            />
+                            <>
+                                <PracticeQuestion
+                                    question={currentQuestion}
+                                    questionIndex={currentQuestionIndex}
+                                    answers={answers}
+                                    checkResult={checkResult}
+                                    onAnswer={wrappedHandleAnswer}
+                                    onZoomImage={onZoomImage}
+                                />
+                                <div className={styles.navButtonContainer}>
+                                    <button
+                                        onClick={handlePreviousQuestion}
+                                        disabled={currentQuestionIndex === 0}
+                                        className={styles.navButton}
+                                    >
+                                        Câu trước
+                                    </button>
+                                    <button
+                                        onClick={handleNextQuestion}
+                                        disabled={currentQuestionIndex === questions.length - 1}
+                                        className={styles.navButton}
+                                    >
+                                        Câu sau
+                                    </button>
+                                </div>
+                            </>
                         )
                     ) : (
                         <>
@@ -169,9 +199,11 @@ const PracticePage = () => {
                     )}
                 </div>
             )}
-            <div className={styles.tip}>
-                Mẹo: Dùng phím ← → để chuyển câu, dùng phím 1 2 3 4 để chọn đáp án nhanh.
-            </div>
+            {!isMobile && (
+                <div className={styles.tip}>
+                    Mẹo: Dùng phím ← → để chuyển câu, dùng phím 1 2 3 4 để chọn đáp án nhanh.
+                </div>
+            )}
             {questions.length > 0 && (
                 <div className={styles.deleteButtonContainer}>
                     <button

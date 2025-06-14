@@ -121,6 +121,14 @@ const MockTestPage = () => {
         setFlagged(prev => ({ ...prev, [qid]: !prev[qid] }));
     }, []);
 
+    const handlePreviousQuestion = useCallback(() => {
+        setCurrentIdx(idx => Math.max(idx - 1, 0));
+    }, []);
+
+    const handleNextQuestion = useCallback(() => {
+        setCurrentIdx(idx => Math.min(idx + 1, questions.length - 1));
+    }, [questions.length]);
+
     const formatTime = useCallback((seconds) => {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
@@ -481,6 +489,20 @@ const MockTestPage = () => {
                             {isMobile && (
                                 <div className={`${styles.actionBar} ${styles.actionBarMobile}`}>
                                     <div className={styles.actionButtonsMobile}>
+                                        <button
+                                            onClick={handlePreviousQuestion}
+                                            disabled={currentIdx === 0}
+                                            className={`${styles.navButton} ${styles.buttonMobile}`}
+                                        >
+                                            Câu trước
+                                        </button>
+                                        <button
+                                            onClick={handleNextQuestion}
+                                            disabled={currentIdx === questions.length - 1}
+                                            className={`${styles.navButton} ${styles.buttonMobile}`}
+                                        >
+                                            Câu sau
+                                        </button>
                                         <button onClick={handleRetry} className={`${styles.button} ${styles.exitButton} ${styles.buttonMobile}`}>
                                             Thoát
                                         </button>
@@ -512,6 +534,11 @@ const MockTestPage = () => {
                             onToggleFlag={handleToggleFlag}
                         />
                     )}
+                </div>
+            )}
+            {!isMobile && (
+                <div className={styles.tip}>
+                    Mẹo: Dùng phím ← → để chuyển câu, dùng phím 1 2 3 4 để chọn đáp án nhanh.
                 </div>
             )}
             <ImageModal
