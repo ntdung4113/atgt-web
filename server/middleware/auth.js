@@ -1,17 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Kiểm tra middleware protect
 exports.protect = async (req, res, next) => {
     try {
         let token;
 
-        // Lấy token từ header
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
         }
 
-        // Kiểm tra token tồn tại
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -20,10 +17,8 @@ exports.protect = async (req, res, next) => {
         }
 
         try {
-            // Xác minh token
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Thêm user vào request
             req.user = await User.findById(decoded.id);
 
             if (!req.user) {
@@ -49,10 +44,8 @@ exports.protect = async (req, res, next) => {
     }
 };
 
-// Simple middleware for backward compatibility with existing code
 exports.auth = exports.protect;
 
-// Middleware to authorize based on user role
 exports.authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
@@ -71,4 +64,12 @@ exports.authorize = (...roles) => {
 
         next();
     };
+};
+
+exports.isAdmin = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Không có quyền truy cập' });
+    }
 };

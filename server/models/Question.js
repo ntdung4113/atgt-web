@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const questionSchema = new mongoose.Schema({
-  question_id: {
+  questionNumber: {
     type: Number,
     required: true,
     unique: true,

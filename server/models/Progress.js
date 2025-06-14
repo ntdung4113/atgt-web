@@ -7,7 +7,8 @@ const progressSchema = new mongoose.Schema({
     required: true,
   },
   question_id: {
-    type: Number,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Question',
     required: true,
   },
   user_answer: {
@@ -24,7 +25,6 @@ const progressSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Đảm bảo chỉ có một bản ghi cho mỗi cặp user_id và question_id
 progressSchema.index({ user_id: 1, question_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('Progress', progressSchema);

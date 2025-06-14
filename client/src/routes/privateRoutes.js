@@ -1,7 +1,7 @@
-import PracticePage from '../pages/PracticePage';
-import MockTestPage from '../pages/MockTestPage';
+import PracticePage from '../pages/Practice/Practice';
+import MockTestPage from '../pages/MockTest/MockTestPage';
 const privateRoutes = [
-    { path: '/practice', element: <PracticePage /> },
+    { path: '/practice', element: <PracticePage /> }, 
     { path: '/test', element: <MockTestPage />}
 ];
 

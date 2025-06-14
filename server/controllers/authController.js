@@ -11,45 +11,9 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const generateToken = (user) => {
     return jwt.sign(
         { id: user._id, email: user.email, role: user.role },
-        process.env.JWT_SECRET || 'yftf7sifsif',
+        process.env.JWT_SECRET,
         { expiresIn: '1d' }
     );
-};
-
-// Test login for Postman
-exports.testLogin = async (req, res) => {
-    try {
-        const { email, name } = req.body;
-
-        // Tìm hoặc tạo user
-        let user = await User.findOne({ email });
-        if (!user) {
-            user = await User.create({
-                email,
-                name,
-                role: 'user'
-            });
-        }
-
-        const token = generateToken(user);
-
-        res.status(200).json({
-            success: true,
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            }
-        });
-    } catch (error) {
-        console.error('Test login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Test login failed'
-        });
-    }
 };
 
 exports.googleAuth = async (req, res) => {
@@ -63,9 +27,6 @@ exports.googleAuth = async (req, res) => {
             });
         }
 
-        console.log('Received credential:', credential.substring(0, 20) + '...');
-
-        // Verify the Google ID token
         const ticket = await client.verifyIdToken({
             idToken: credential,
             audience: GOOGLE_CLIENT_ID
@@ -80,14 +41,10 @@ exports.googleAuth = async (req, res) => {
         }
 
         const { sub: googleId, email, name, picture } = payload;
-        console.log('Token verified for:', email);
 
-        // Tìm user theo googleId hoặc email
         let user = await User.findOne({ $or: [{ googleId }, { email }] });
 
         if (!user) {
-            // Nếu không tìm thấy user, tạo mới
-            console.log('Creating new user for:', email);
             user = await User.create({
                 googleId,
                 email,
@@ -96,8 +53,6 @@ exports.googleAuth = async (req, res) => {
                 role: 'user'
             });
         } else if (!user.googleId) {
-            // Nếu user tồn tại nhưng chưa có googleId, cập nhật
-            console.log('Updating existing user:', email);
             user.googleId = googleId;
             user.picture = picture;
             await user.save();
@@ -125,12 +80,8 @@ exports.googleAuth = async (req, res) => {
     }
 };
 
-// Trong hàm xử lý đăng nhập hoặc đăng ký
 exports.googleLogin = async (req, res) => {
     try {
-        // ... code xác thực Google ...
-
-        // Tạo hoặc tìm user
         let user = await User.findOne({ email });
 
         if (!user) {
@@ -138,16 +89,12 @@ exports.googleLogin = async (req, res) => {
                 name,
                 email,
                 googleId,
-                // ...các trường khác...
-                // Thêm license mặc định nếu là người dùng mới
                 license: 'B1'
             });
         }
 
-        // Tạo token
         const token = user.getSignedJwtToken();
 
-        // Trả về thông tin user (bao gồm license)
         res.status(200).json({
             success: true,
             token,
@@ -155,12 +102,15 @@ exports.googleLogin = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                license: user.license, // Đảm bảo trả về license
+                license: user.license,
                 role: user.role
             }
         });
     } catch (error) {
-        // ...xử lý lỗi...
+        res.status(500).json({
+            success: false,
+            message: 'Login failed: ' + error.message
+        });
     }
 };
 

@@ -41,7 +41,7 @@ const lawSchema = new mongoose.Schema(
         },
     },
     {
-        timestamps: true, // Tự động cập nhật createdAt và updatedAt
+        timestamps: true
     }
 );
 

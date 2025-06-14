@@ -20,4 +20,20 @@ export const checkPracticeAnswers = async (token, answers) => {
     };
     const res = await axios.post('/api/questions/check-answers', { answers }, config);
     return res.data;
-}; 
+};
+
+export const fetchMockTest = async (token, license) => {
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+    const res = await axios.get(`${API_URL}/mock-test?license=${license}`, config);
+    return res.data;
+};
+
+export const submitMockTest = async (token, { answers, question_ids, license }) => {
+    const config = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
+    const res = await axios.post(`${API_URL}/submit-mock-test`, { answers, question_ids, license }, config);
+    return res.data;
+};

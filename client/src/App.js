@@ -4,16 +4,12 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   ThemeProvider,
   createTheme,
-  CssBaseline,
-  Box,
-  Paper,
-  Fade,
+  CssBaseline
 } from '@mui/material';
-import './App.css';
-import './styles/f8.css';
+import './assets/css/App.css';
 import { AuthProvider } from './context/AuthContext';
-import useAuth from './hooks/useAuth';
-import Header from './components/Layout/Header';
+import useAuth from './components/hooks/useAuth';
+import Header from './components/layout/Header';
 import publicRoutes from './routes/publicRoutes';
 import privateRoutes from './routes/privateRoutes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

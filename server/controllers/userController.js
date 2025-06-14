@@ -1,6 +1,5 @@
-const User = require('../models/User'); // Đảm bảo import User model
+const User = require('../models/User');
 
-// Thêm hàm để cập nhật license
 exports.updateLicense = async (req, res) => {
     try {
         const { license } = req.body;
@@ -12,9 +11,6 @@ exports.updateLicense = async (req, res) => {
             });
         }
 
-        console.log('Updating license for user:', req.user.id, 'to:', license);
-
-        // Tìm và cập nhật user
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id,
             { license },
@@ -42,7 +38,6 @@ exports.updateLicense = async (req, res) => {
     }
 };
 
-// Thêm hàm để lấy thông tin người dùng hiện tại
 exports.getCurrentUser = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');

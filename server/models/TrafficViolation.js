@@ -16,7 +16,7 @@ const trafficViolationSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            index: true, // hỗ trợ tìm kiếm
+            index: true
         },
         fine: {
             type: String,
@@ -36,7 +36,6 @@ const trafficViolationSchema = new mongoose.Schema(
     }
 );
 
-// Tạo text index cho violation_name để hỗ trợ tìm kiếm
 trafficViolationSchema.index({ violation_name: 'text' });
 
 module.exports = mongoose.model("TrafficViolation", trafficViolationSchema); 

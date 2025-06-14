@@ -1,6 +1,5 @@
 const Law = require('../models/Law');
 
-// Lấy danh sách văn bản (có phân trang)
 exports.getLaws = async (req, res) => {
     try {
         const { page = 1, limit = 20, type } = req.query;
@@ -26,7 +25,6 @@ exports.getLaws = async (req, res) => {
     }
 };
 
-// Lấy chi tiết 1 văn bản
 exports.getLawDetail = async (req, res) => {
     try {
         const { lawNumber } = req.params;
@@ -38,7 +36,6 @@ exports.getLawDetail = async (req, res) => {
     }
 };
 
-// Tìm kiếm full-text hoặc theo mã/tên
 exports.searchLaws = async (req, res) => {
     try {
         const { q, page = 1, limit = 20, type } = req.query;

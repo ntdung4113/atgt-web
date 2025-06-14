@@ -2,15 +2,29 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const Post = require('../models/Post');
-const dotenv = require('dotenv');
-dotenv.config();
+const cloudinary = require('cloudinary').v2;
+const Situation = require('../models/Situation');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+// Kiểm tra biến môi trường
+if (!process.env.MONGO_URI) {
+  console.error('❌ MONGO_URI is not defined in the .env file');
+  process.exit(1);
+}
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('❌ Cloudinary environment variables are missing');
+  process.exit(1);
+}
+
+// Cấu hình Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Kết nối MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
+mongoose.connect(process.env.MONGO_URI).then(() => {
   console.log('✅ Đã kết nối MongoDB');
 }).catch(err => {
   console.error('❌ Lỗi kết nối MongoDB:', err);
@@ -40,9 +54,8 @@ function extractPostData(node) {
         name: node.actors?.[0]?.name || null,
         link: node.actors?.[0]?.url || null
       },
-      thumbnail_url: media?.thumbnailImage?.uri || null,
       video_url: videoUrl,
-      status: 'pending' // Thêm status mặc định
+      status: 'not-uploaded'
     };
   } catch (e) {
     console.error(`Lỗi khi xử lý node: ${e.message}`);
@@ -50,24 +63,48 @@ function extractPostData(node) {
   }
 }
 
-// Hàm lưu batch vào MongoDB
-async function saveBatchToMongoDB(posts) {
+// Hàm upload video lên Cloudinary
+async function uploadToCloudinary(videoUrl, postId) {
   try {
-    const savedPosts = [];
-    for (const post of posts) {
-      // Kiểm tra xem post đã tồn tại chưa
-      const existingPost = await Post.findOne({ post_id: post.post_id });
-      if (!existingPost) {
-        const newPost = new Post(post);
-        await newPost.save();
-        savedPosts.push(newPost);
-      }
-    }
-    console.log(`✅ Đã lưu ${savedPosts.length} bài viết mới vào MongoDB`);
-    return savedPosts;
+    // Upload video
+    const videoResult = await cloudinary.uploader.upload(videoUrl, {
+      resource_type: 'video',
+      folder: 'videos_upload',
+      public_id: `video_${postId}`,
+      overwrite: false
+    });
+
+    // Tạo thumbnail URL từ public_id của video
+    const thumbnailUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/video/upload/videos_upload/video_${postId}.jpg`;
+
+    return {
+      video_url: videoResult.secure_url,
+      thumbnail_url: thumbnailUrl
+    };
   } catch (err) {
-    console.error(`❌ Lỗi khi lưu batch vào MongoDB: ${err.message}`);
-    return [];
+    console.error(`❌ Lỗi khi upload lên Cloudinary: ${err.message}`);
+    return null;
+  }
+}
+
+// Hàm lưu bài viết vào MongoDB
+async function saveToMongoDB(post) {
+  try {
+    const newSituation = new Situation({
+      situation_id: post.post_id,
+      content: post.content,
+      author: post.author,
+      video_url: post.video_url,
+      thumbnail_url: post.thumbnail_url,
+      status: 'pending',
+      tags: [] // Khởi tạo mảng tags rỗng
+    });
+    await newSituation.save();
+    console.log(`✅ Đã lưu tình huống ${post.post_id} vào MongoDB`);
+    return newSituation;
+  } catch (err) {
+    console.error(`❌ Lỗi khi lưu tình huống ${post.post_id} vào MongoDB: ${err.message}`);
+    return null;
   }
 }
 
@@ -85,15 +122,15 @@ async function saveBatchToMongoDB(posts) {
   });
   const page = await browser.newPage();
 
-  // Đặt user agent và viewport để sử dụng giao diện desktop
+  // Đặt user agent và viewport
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Edge/137.0.56 Safari/537.36');
   await page.setViewport({ width: 1280, height: 1000 });
   await page.setExtraHTTPHeaders({ 'Accept': 'text/html,application/xhtml+xml' });
 
-  // Chặn tài nguyên không cần thiết
+  // Chặn tài nguyên không cần thiết (cho phép media để tải video)
   await page.setRequestInterception(true);
   page.on('request', (req) => {
-    if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+    if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
       req.abort();
     } else {
       req.continue();
@@ -102,13 +139,12 @@ async function saveBatchToMongoDB(posts) {
 
   // Thu thập và xử lý response XHR
   let responseCounter = 0;
-  const startTime = Date.now();
-  const MAX_DURATION = 300000; // 5 phút
-  const BATCH_SIZE = 10; // Lưu sau mỗi 10 bài viết
-  let allPosts = []; // Lưu trữ tạm thời các bài viết
+  let collectedVideos = 0; // Đếm số video đã thu thập
+  const MAX_VIDEOS = 5; // Giới hạn 5 video
+  const SCROLL_TIMEOUT = 15 * 60 * 1000; // 15 phút timeout
 
   page.on('response', async (response) => {
-    if (Date.now() - startTime > MAX_DURATION) return;
+    if (collectedVideos >= MAX_VIDEOS) return;
 
     const url = response.url();
     if (url.includes('/api/graphql/') && response.request().method() === 'POST') {
@@ -131,21 +167,36 @@ async function saveBatchToMongoDB(posts) {
           if (braceCount === 0 && buffer.trim()) {
             try {
               const jsonObj = JSON.parse(buffer.trim());
-              // Kiểm tra xem response có cấu trúc mong muốn
               if (jsonObj?.data?.node?.__typename === 'Group' && jsonObj?.data?.node?.group_feed?.edges) {
                 const edges = jsonObj.data.node.group_feed.edges;
-                // Trích xuất và lọc bài viết có video
                 const filteredPosts = edges
                   .map(item => extractPostData(item.node))
                   .filter(post => post !== null);
 
-                if (filteredPosts.length > 0) {
-                  allPosts.push(...filteredPosts);
-                  console.log(`✅ Đã tìm thấy ${filteredPosts.length} bài viết có video`);
-                  // Lưu batch nếu đủ số lượng
-                  if (allPosts.length >= BATCH_SIZE) {
-                    await saveBatchToMongoDB(allPosts);
-                    allPosts = []; // Reset sau khi lưu
+                for (const post of filteredPosts) {
+                  if (collectedVideos >= MAX_VIDEOS) break;
+
+                  // Kiểm tra xem bài viết đã tồn tại trong MongoDB
+                  const existingPost = await Situation.findOne({ situation_id: post.post_id });
+                  if (!existingPost) {
+                    // Upload lên Cloudinary
+                    const uploadResult = await uploadToCloudinary(post.video_url, post.post_id);
+                    if (uploadResult) {
+                      // Lưu URL từ Cloudinary vào MongoDB
+                      const postToSave = {
+                        post_id: post.post_id,
+                        content: post.content,
+                        author: post.author,
+                        video_url: uploadResult.video_url,
+                        thumbnail_url: uploadResult.thumbnail_url,
+                        status: 'pending'
+                      };
+                      await saveToMongoDB(postToSave);
+                      collectedVideos++;
+                      console.log(`✅ Đã thu thập video ${collectedVideos}/${MAX_VIDEOS}`);
+                    }
+                  } else {
+                    console.log(`⏭ Tình huống ${post.post_id} đã tồn tại trong MongoDB, bỏ qua.`);
                   }
                 }
               }
@@ -167,6 +218,7 @@ async function saveBatchToMongoDB(posts) {
 
   // Truy cập Facebook
   await page.goto('https://www.facebook.com/', { waitUntil: 'networkidle2' });
+  console.log('Navigated to Facebook homepage');
 
   // Nạp cookies
   const cookiesFilePath = path.join(__dirname, '../data/www.facebook.com_06-06-2025.json');
@@ -197,9 +249,7 @@ async function saveBatchToMongoDB(posts) {
   }
 
   // Truy cập nhóm
-  await page.goto('https://www.facebook.com/groups/otofun2021/?sorting_setting=CHRONOLOGICAL', {
-    waitUntil: 'networkidle2',
-  });
+  await page.goto('https://www.facebook.com/groups/otofun2021', { waitUntil: 'networkidle2' });
 
   // Kiểm tra đăng nhập
   const isLoggedIn = await page.evaluate(() => {
@@ -211,37 +261,26 @@ async function saveBatchToMongoDB(posts) {
     return;
   }
 
-  // Cuộn trang để kích hoạt XHR
-  const MAX_SCROLLS = 30;
-  let noNewContentCount = 0;
-  const MAX_NO_NEW_CONTENT = 3; // Thoát nếu không có nội dung mới sau 3 lần
-  let previousHeight;
-  for (let i = 0; i < MAX_SCROLLS; i++) {
-    previousHeight = await page.evaluate('document.body.scrollHeight');
-    await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-    try {
-      await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`, { timeout: 10000 });
-      noNewContentCount = 0; // Reset nếu có nội dung mới
-    } catch {
-      console.log('📉 Không tải thêm nội dung, tiếp tục cuộn sâu hơn.');
-      noNewContentCount++;
-      if (noNewContentCount >= MAX_NO_NEW_CONTENT) {
-        console.log('🛑 Không còn nội dung mới, thoát cuộn.');
-        break;
+  // Cuộn trang nhanh để kích hoạt XHR
+  const scrollStartTime = Date.now();
+  let scrollCount = 0;
+  while (collectedVideos < MAX_VIDEOS && Date.now() - scrollStartTime < SCROLL_TIMEOUT) {
+    // Cuộn nhiều lần trong mỗi vòng lặp để kích hoạt XHR nhanh hơn
+    await page.evaluate(() => {
+      for (let j = 0; j < 5; j++) {
+        window.scrollBy(0, 1000); // Cuộn 1000px mỗi lần
       }
-    }
-    await delay(3000); // Giảm từ 10s xuống 3s
-  }
-
-  // Lưu các bài viết còn lại trong allPosts
-  if (allPosts.length > 0) {
-    await saveBatchToMongoDB(allPosts);
+    });
+    scrollCount++;
+    console.log(`📜 Đã cuộn lần ${scrollCount}`);
+    await delay(1000); // Delay 1000ms để cân bằng tốc độ và độ tin cậy
   }
 
   // Đợi thêm để đảm bảo thu thập hết response
   await delay(5000);
 
   console.log(`✅ Đã xử lý tổng cộng ${responseCounter} response GraphQL`);
+  console.log(`✅ Đã thu thập ${collectedVideos} video`);
 
   // Đóng kết nối MongoDB và trình duyệt
   await mongoose.connection.close();

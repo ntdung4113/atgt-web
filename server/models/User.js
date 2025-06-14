@@ -29,7 +29,7 @@ const UserSchema = new mongoose.Schema({
     },
     license: {
         type: String,
-        default: 'B1' // Giá trị mặc định
+        default: 'B1'
     }
 }, {
     timestamps: true
