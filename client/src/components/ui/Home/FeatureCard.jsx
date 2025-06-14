@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function FeatureCard({ title, description, link, linkText }) {
+    const navigate = useNavigate();
     return (
         <div style={{
             background: 'white',
@@ -18,7 +20,7 @@ function FeatureCard({ title, description, link, linkText }) {
         }}
             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-            onClick={() => window.location.href = link}
+            onClick={() => navigate(link)}
         >
             <h2 style={{
                 color: '#1a73e8',

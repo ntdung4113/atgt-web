@@ -5,7 +5,7 @@ function Hero() {
         <div style={{
             textAlign: 'center',
             padding: '1rem 1rem',
-            background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+            background: '#e3f2fd',
             color: '#333',
             marginBottom: '0.5rem',
             height: 'auto',
@@ -25,7 +25,7 @@ function Hero() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'radial-gradient(circle at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 100%)',
                 zIndex: 1
             }} />
             <h1 style={{

@@ -345,9 +345,25 @@ const MockTestPage = () => {
                         )}
                         {isMobile && (
                             <div className={`${styles.actionBar} ${styles.actionBarMobile}`}>
-                                <button onClick={handleExitReview} className={`${styles.button} ${styles.exitButton} ${styles.buttonMobile}`}>
-                                    Thoát
-                                </button>
+                                <div className={styles.actionButtonsMobile}>
+                                    <button
+                                        onClick={handlePreviousQuestion}
+                                        disabled={currentIdx === 0}
+                                        className={`${styles.navButton} ${styles.buttonMobile}`}
+                                    >
+                                        Câu trước
+                                    </button>
+                                    <button
+                                        onClick={handleNextQuestion}
+                                        disabled={currentIdx === reviewQuestions.length - 1}
+                                        className={`${styles.navButton} ${styles.buttonMobile}`}
+                                    >
+                                        Câu sau
+                                    </button>
+                                    <button onClick={handleExitReview} className={`${styles.button} ${styles.exitButton} ${styles.buttonMobile}`}>
+                                        Thoát
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
