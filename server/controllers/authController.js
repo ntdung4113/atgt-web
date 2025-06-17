@@ -80,40 +80,6 @@ exports.googleAuth = async (req, res) => {
     }
 };
 
-exports.googleLogin = async (req, res) => {
-    try {
-        let user = await User.findOne({ email });
-
-        if (!user) {
-            user = await User.create({
-                name,
-                email,
-                googleId,
-                license: 'B1'
-            });
-        }
-
-        const token = user.getSignedJwtToken();
-
-        res.status(200).json({
-            success: true,
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                license: user.license,
-                role: user.role
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Login failed: ' + error.message
-        });
-    }
-};
-
 exports.getCurrentUser = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-googleId');

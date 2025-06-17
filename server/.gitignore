@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /data
+/uploads
 /.pnp
 .pnp.js
 
@@ -24,3 +25,4 @@ yarn-debug.log*
 yarn-error.log*
 
 .env
+nodemon.json

@@ -239,14 +239,14 @@ const usePractice = () => {
         setLicense: (value) => dispatch({ type: 'SET_LICENSE', payload: value }),
         questions: state.questions,
         currentQuestionIndex: state.currentQuestionIndex,
-        answers: Object.fromEntries(state.answers), // Chuyển Map thành object để tương thích với component
+        answers: Object.fromEntries(state.answers), 
         checkResult: state.checkResult,
         loading: state.loading,
         showSidebar: state.showSidebar,
         setShowSidebar: (value) => dispatch({ type: 'SET_SHOW_SIDEBAR', payload: value }),
         topic: state.topic,
         setTopic: (value) => dispatch({ type: 'SET_TOPIC', payload: value }),
-        progress: Object.fromEntries(state.progress), // Chuyển Map thành object
+        progress: Object.fromEntries(state.progress), 
         showDeleteModal: state.showDeleteModal,
         setShowDeleteModal: (value) => dispatch({ type: 'SET_SHOW_DELETE_MODAL', payload: value }),
         showImageModal: state.showImageModal,

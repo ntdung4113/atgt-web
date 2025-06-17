@@ -14,7 +14,6 @@ import publicRoutes from './routes/publicRoutes';
 import privateRoutes from './routes/privateRoutes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Create theme
 const theme = createTheme({
   palette: {
     primary: {
