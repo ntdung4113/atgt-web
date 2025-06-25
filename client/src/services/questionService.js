@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-const API_URL = '/api/questions';
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const getPracticeQuestions = async (token, { topic }) => {
     const config = {
         headers: { Authorization: `Bearer ${token}` }
     };
-    let url = `${API_URL}/license-questions`;
+    let url = `${API_URL}/api/questions/license-questions`;
     if (topic) {
         url += `?topic=${topic}`;
     }
@@ -18,7 +18,7 @@ export const checkPracticeAnswers = async (token, answers) => {
     const config = {
         headers: { Authorization: `Bearer ${token}` }
     };
-    const res = await axios.post('/api/questions/check-answers', { answers }, config);
+    const res = await axios.post(`${API_URL}/api/questions/check-answers`, { answers }, config);
     return res.data;
 };
 

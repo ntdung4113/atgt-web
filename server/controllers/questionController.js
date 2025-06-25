@@ -223,11 +223,11 @@ exports.getProgress = async (req, res) => {
         const questionIds = progress.map(p => p.question_id);
 
         const questions = await Question.find({
-            _id: { $in: questionIds }  // Tìm theo _id thay vì questionNumber
+            _id: { $in: questionIds }  
         }).select('questionNumber content options image_link hint topic');
 
         const questionMap = questions.reduce((map, question) => {
-            map[question._id.toString()] = question;  // Map theo _id
+            map[question._id.toString()] = question; 
             return map;
         }, {});
 
@@ -235,9 +235,9 @@ exports.getProgress = async (req, res) => {
             success: true,
             count: progress.length,
             data: progress.map((entry) => {
-                const question = questionMap[entry.question_id.toString()] || {};  // Lấy theo _id
+                const question = questionMap[entry.question_id.toString()] || {};  
                 return {
-                    questionNumber: question.questionNumber || '',  // Hiển thị questionNumber
+                    questionNumber: question.questionNumber || '',
                     content: question.content || '',
                     options: question.options || [],
                     image_link: question.image_link || '',

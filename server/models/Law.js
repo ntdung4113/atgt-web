@@ -45,14 +45,13 @@ const lawSchema = new mongoose.Schema(
     }
 );
 
-// Tạo text index để hỗ trợ tìm kiếm full-text
 lawSchema.index({
     title: 'text',
     contentText: 'text',
     'metadata.keywords': 'text',
-    lawNumber: 1, // Index riêng cho lawNumber
-    'metadata.issuer': 1, // Index cho issuer
-    issuedDate: -1, // Index cho sắp xếp issuedDate
+    lawNumber: 1, 
+    'metadata.issuer': 1,
+    issuedDate: -1,
 });
 
 module.exports = mongoose.model("Law", lawSchema);

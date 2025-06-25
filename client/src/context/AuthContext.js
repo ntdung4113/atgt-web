@@ -6,12 +6,11 @@ export { AuthContext };
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token') || null); // <-- Thêm token
+    const [token, setToken] = useState(localStorage.getItem('token') || null);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [authError, setAuthError] = useState(null);
 
-    // Kiểm tra xác thực khi load trang
     useEffect(() => {
         const check = async () => {
             if (!token) {
@@ -45,8 +44,8 @@ export const AuthProvider = ({ children }) => {
         try {
             const { user, token } = await authService.login(googleData);
 
-            localStorage.setItem('token', token);     // Lưu vào localStorage
-            setToken(token);                          // Lưu vào context
+            localStorage.setItem('token', token);     
+            setToken(token);                      
             setUser(user);
             setIsAuthenticated(true);
             return user;
@@ -70,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         authService.logout();
-        localStorage.removeItem('token');  // Xoá token khỏi localStorage
+        localStorage.removeItem('token'); 
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
@@ -108,7 +107,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const contextValue = {
-        token,               // <-- Truyền token trong context
+        token,             
         user,
         loading,
         isAuthenticated,

@@ -87,16 +87,18 @@ const SituationList = () => {
             />
           )}
           renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
-              <Chip
-                key={index}
-                variant="outlined"
-                label={option}
-                size="small"
-                {...getTagProps({ index })}
-              />
-            ))
-          }
+            value.map((option, index) => {
+              const { key, ...tagProps } = getTagProps({ index });
+              return (
+                <Chip
+                  key={key}
+                  variant="outlined"
+                  label={option}
+                  size="small"
+                  {...tagProps}
+                />
+              );
+            })}
           loading={tagsLoading}
           disabled={tagsLoading || !!tagsError}
           fullWidth
@@ -118,11 +120,24 @@ const SituationList = () => {
           Không tìm thấy bài viết nào phù hợp với tiêu chí tìm kiếm.
         </Alert>
       )}
-      <Grid container spacing={3} justifyContent="center">
+      <Grid
+        container
+        spacing={3}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: '1fr 1fr',
+            md: '1fr 1fr 1fr',
+            lg: '1fr 1fr 1fr 1fr'
+          },
+          gap: 3
+        }}
+      >
         {situations.map((situation) => (
-          <Grid item key={situation._id} xs={12} sm={6} md={4} lg={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Box key={situation._id} sx={{ display: 'flex', justifyContent: 'center' }}>
             <SituationCard situation={situation} onVideoClick={handleOpenVideo} />
-          </Grid>
+          </Box>
         ))}
       </Grid>
       {totalPages > 1 && (

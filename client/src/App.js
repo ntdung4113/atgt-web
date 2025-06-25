@@ -13,8 +13,8 @@ import Header from './components/layout/Header';
 import publicRoutes from './routes/publicRoutes';
 import privateRoutes from './routes/privateRoutes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import NotFound from './pages/NotFound/NotFound';
 
-// Create theme
 const theme = createTheme({
   palette: {
     primary: {
@@ -119,6 +119,7 @@ function AppContent() {
               element={<ProtectedRoute>{route.element}</ProtectedRoute>}
             />
           ))}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </>

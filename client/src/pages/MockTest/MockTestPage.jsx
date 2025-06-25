@@ -198,7 +198,7 @@ const MockTestPage = () => {
                 .then(userData => {
                     if (userData?.license) setLicense(userData.license);
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     }, [token]);
 
@@ -315,8 +315,8 @@ const MockTestPage = () => {
                             )}
                             <div>
                                 {q?.options.map((opt, i) => {
-                                    const isCorrect = i === q.correct_answer;
-                                    const isUserAnswer = i === q.user_answer;
+                                    const isCorrect = (i + 1) === q.correct_answer;
+                                    const isUserAnswer = (i + 1) === q.user_answer;
                                     const isWrong = isUserAnswer && !isCorrect;
                                     const optionClass = isCorrect ? styles.reviewOptionCorrect : isWrong ? styles.reviewOptionWrong : styles.reviewOptionDefault;
                                     return (

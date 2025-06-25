@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { situationService } from '../../services/situationService';
 
-export const useSituations = (initialPage = 1, limit = 9) => {
+export const useSituations = (initialPage = 1, limit = 12) => {
   const [situations, setSituations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,7 +29,7 @@ export const useSituations = (initialPage = 1, limit = 9) => {
   const fetchSituations = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await situationService.getSituations({
+      const response = await situationService.getApprovedSituations({
         page,
         status: 'approved',
         limit,
