@@ -26,6 +26,7 @@ export const TOPIC_LIST = [
     { value: 4, label: 'Cấu tạo và sửa chữa' },
     { value: 5, label: 'Báo hiệu đường bộ' },
     { value: 6, label: 'Giải thế sa hình và kỹ năng xử lý tình huống giao thông' },
+    { value: 7, label: 'Câu điểm liệt' }
 ];
 
 export const SIGN_TAGS = [
